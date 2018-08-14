@@ -18,6 +18,7 @@ mod flags;
 mod fs;
 pub mod handlers;
 mod version;
+mod net;
 
 use libc::c_void;
 use std::collections::HashMap;

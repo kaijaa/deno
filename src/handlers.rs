@@ -9,7 +9,7 @@ use fs;
 use futures;
 use futures::sync::oneshot;
 use hyper;
-use hyper::rt::{Future, Stream};
+use hyper::rt::{self, Future, Stream};
 use hyper::Client;
 use msg_generated::deno as msg;
 use std;
