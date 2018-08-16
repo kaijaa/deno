@@ -1,5 +1,5 @@
 // Copyright 2018 the Deno authors. All rights reserved. MIT license.
-use errors::DenoError;
+use errors::DenoResult;
 use fs;
 use net;
 use sha1;
@@ -26,12 +26,17 @@ pub struct DenoDir {
   // This is where we cache compilation outputs. Example:
   // /Users/rld/.deno/gen/f39a473452321cacd7c346a870efb0e3e1264b43.js
   pub deps: PathBuf,
+  // If remote resources should be reloaded.
+  reload: bool,
 }
 
 impl DenoDir {
   // Must be called before using any function from this module.
   // https://github.com/denoland/deno/blob/golang/deno_dir.go#L99-L111
-  pub fn new(custom_root: Option<&Path>) -> std::io::Result<DenoDir> {
+  pub fn new(
+    reload: bool,
+    custom_root: Option<&Path>,
+  ) -> std::io::Result<DenoDir> {
     // Only setup once.
     let home_dir = std::env::home_dir().expect("Could not get home directory.");
     let default = home_dir.join(".deno");
@@ -43,7 +48,12 @@ impl DenoDir {
     let gen = root.as_path().join("gen");
     let deps = root.as_path().join("deps");
 
-    let deno_dir = DenoDir { root, gen, deps };
+    let deno_dir = DenoDir {
+      root,
+      gen,
+      deps,
+      reload,
+    };
     fs::mkdir(deno_dir.gen.as_ref())?;
     fs::mkdir(deno_dir.deps.as_ref())?;
 
@@ -94,11 +104,48 @@ impl DenoDir {
     }
   }
 
+  // Prototype https://github.com/denoland/deno/blob/golang/deno_dir.go#L37-L73
+  fn fetch_remote_source(
+    self: &DenoDir,
+    module_name: &str,
+    filename: &str,
+  ) -> std::io::Result<String> {
+    let filepath = Path::new(filename);
+    if !self.reload && filepath.exists() {
+      fs::read_file_sync_string(&filepath)
+    } else {
+      println!("Downloading {}", module_name);
+      net::http_code_fetch(module_name).and_then(|res| {
+        fs::write_file_sync(&filepath, res.as_bytes());
+        Ok(res)
+      })
+    }
+  }
+
+  // Prototype: https://github.com/denoland/deno/blob/golang/os.go#L122-L138
+  fn get_source_code(
+    self: &DenoDir,
+    module_name: &str,
+    filename: &str,
+  ) -> std::io::Result<String> {
+    if is_remote(module_name) {
+      self.fetch_remote_source(module_name, filename)
+    } else if module_name.starts_with(ASSET_PREFIX) {
+      panic!("Asset resolution should be done in JS, not Rust.");
+    } else {
+      assert!(
+        module_name == filename,
+        "if a module isn't remote, it should have the same filename"
+      );
+      fs::read_file_sync_string(Path::new(filename))
+    }
+  }
+
   pub fn code_fetch(
     self: &DenoDir,
     module_specifier: &str,
     containing_file: &str,
-  ) -> Result<CodeFetchOutput, DenoError> {
+  ) -> DenoResult<CodeFetchOutput> {
     let (module_name, filename) =
       self.resolve_module(module_specifier, containing_file)?;
 
@@ -107,7 +154,8 @@ impl DenoDir {
             module_name, module_specifier, containing_file, filename
         );
 
-    let out = get_source_code(module_name.as_str(), filename.as_str())
+    let out = self
+      .get_source_code(module_name.as_str(), filename.as_str())
       .and_then(|source_code| {
         Ok(CodeFetchOutput {
           module_name,
@@ -252,7 +300,7 @@ pub struct CodeFetchOutput {
 #[cfg(test)]
 pub fn test_setup() -> (TempDir, DenoDir) {
   let temp_dir = TempDir::new().expect("tempdir fail");
-  let deno_dir = DenoDir::new(Some(temp_dir.path())).expect("setup fail");
+  let deno_dir = DenoDir::new(false, Some(temp_dir.path())).expect("setup fail");
   (temp_dir, deno_dir)
 }
 
@@ -428,42 +476,4 @@ const ASSET_PREFIX: &str = "/$asset$/";
 
 fn is_remote(module_name: &str) -> bool {
   module_name.starts_with("http")
-}
-
-// TODO This function should be a member of DenoDir.
-// Prototype https://github.com/denoland/deno/blob/golang/deno_dir.go#L37-L73
-fn fetch_remote_source(
-  module_name: &str,
-  filename: &str,
-) -> std::io::Result<String> {
-  let filepath = Path::new(filename);
-  const RELOAD_FLAG: bool = false; // TODO
-  if !RELOAD_FLAG && filepath.exists() {
-    fs::read_file_sync_string(&filepath)
-  } else {
-    println!("Downloading {}", module_name);
-    net::http_code_fetch(module_name).and_then(|res| {
-      fs::write_file_sync(&filepath, res.as_bytes());
-      Ok(res)
-    })
-  }
-}
-
-// Prototype: https://github.com/denoland/deno/blob/golang/os.go#L122-L138
-fn get_source_code(
-  module_name: &str,
-  filename: &str,
-) -> std::io::Result<String> {
-  if is_remote(module_name) {
-    fetch_remote_source(module_name, filename)
-  } else if module_name.starts_with(ASSET_PREFIX) {
-    assert!(false, "Asset resolution should be done in JS, not Rust.");
-    unimplemented!();
-  } else {
-    assert!(
-      module_name == filename,
-      "if a module isn't remote, it should have the same filename"
-    );
-    fs::read_file_sync_string(Path::new(filename))
-  }
 }
