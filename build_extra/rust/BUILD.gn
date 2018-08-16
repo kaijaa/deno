@@ -443,9 +443,7 @@ rust_crate("string") {
 
 rust_crate("time") {
   source_root = "$registry_github/time-0.1.40/src/lib.rs"
-  extern = [
-    ":libc",
-  ]
+  extern = [ ":libc" ]
 }
 
 rust_crate("try_lock") {

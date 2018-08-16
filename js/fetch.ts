@@ -6,19 +6,18 @@ import {
   Resolvable,
   typedArrayToArrayBuffer
 } from "./util";
-import { pubInternal, sub } from "./dispatch";
-import { deno as pb } from "./msg.pb";
+import { flatbuffers } from "flatbuffers";
+import { libdeno } from "./globals";
+import { deno as fbs } from "gen/msg_generated";
+import { Request, Response, Blob, RequestInit, FormData } from "./fetch_types";
+import { TextDecoder } from "./text_encoding";
 
-export function initFetch() {
-  sub("fetch", (payload: Uint8Array) => {
-    const msg = pb.Msg.decode(payload);
-    assert(msg.command === pb.Msg.Command.FETCH_RES);
-    const id = msg.fetchResId;
-    const f = fetchRequests.get(id);
-    assert(f != null, `Couldn't find FetchRequest id ${id}`);
-
-    f.onMsg(msg);
-  });
+/** @internal */
+export function onFetchRes(base: fbs.Base, msg: fbs.FetchRes) {
+  const id = msg.id();
+  const req = fetchRequests.get(id);
+  assert(req != null, `Couldn't find FetchRequest id ${id}`);
+  req.onMsg(base, msg);
 }
 
 const fetchRequests = new Map<number, FetchRequest>();
@@ -29,6 +28,7 @@ class FetchResponse implements Response {
   bodyUsed = false; // TODO
   status: number;
   statusText = "FIXME"; // TODO
+  trailer: null; // TODO
   readonly type = "basic"; // TODO
   redirected = false; // TODO
   headers: null; // TODO
@@ -75,20 +75,20 @@ class FetchResponse implements Response {
   onHeader: (res: Response) => void;
   onError: (error: Error) => void;
 
-  onMsg(msg: pb.Msg) {
-    if (msg.error !== null && msg.error !== "") {
-      //throw new Error(msg.error)
-      this.onError(new Error(msg.error));
+  onMsg(base: fbs.Base, msg: fbs.FetchRes) {
+    const error = base.error();
+    if (error != null) {
+      this.onError(new Error(error));
       return;
     }
 
     if (this.first) {
       this.first = false;
-      this.status = msg.fetchResStatus;
+      this.status = msg.status();
       this.onHeader(this);
     } else {
       // Body message. Assuming it all comes in one message now.
-      const ab = typedArrayToArrayBuffer(msg.fetchResBody);
+      const ab = typedArrayToArrayBuffer(msg.bodyArray());
       this.bodyWaiter.resolve(ab);
     }
   }
@@ -105,8 +105,8 @@ class FetchRequest {
     this.response = new FetchResponse(this);
   }
 
-  onMsg(msg: pb.Msg) {
-    this.response.onMsg(msg);
+  onMsg(base: fbs.Base, msg: fbs.FetchRes) {
+    this.response.onMsg(base, msg);
   }
 
   destroy() {
@@ -115,12 +115,22 @@ class FetchRequest {
 
   start() {
     log("dispatch FETCH_REQ", this.id, this.url);
-    const res = pubInternal("fetch", {
-      command: pb.Msg.Command.FETCH_REQ,
-      fetchReqId: this.id,
-      fetchReqUrl: this.url
-    });
-    assert(res == null);
+
+    // Send FetchReq message
+    const builder = new flatbuffers.Builder();
+    const url = builder.createString(this.url);
+    fbs.FetchReq.startFetchReq(builder);
+    fbs.FetchReq.addId(builder, this.id);
+    fbs.FetchReq.addUrl(builder, url);
+    const msg = fbs.FetchReq.endFetchReq(builder);
+    fbs.Base.startBase(builder);
+    fbs.Base.addMsg(builder, msg);
+    fbs.Base.addMsgType(builder, fbs.Any.FetchReq);
+    builder.finish(fbs.Base.endBase(builder));
+    const resBuf = libdeno.send(builder.asUint8Array());
+    assert(resBuf == null);
+
+    //console.log("FetchReq sent", builder);
   }
 }
 
@@ -131,8 +141,7 @@ export function fetch(
   const fetchReq = new FetchRequest(input as string);
   const response = fetchReq.response;
   return new Promise((resolve, reject) => {
-    // tslint:disable-next-line:no-any
-    response.onHeader = (response: any) => {
+    response.onHeader = (response: FetchResponse) => {
       log("onHeader");
       resolve(response);
     };
