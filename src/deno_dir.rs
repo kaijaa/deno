@@ -259,6 +259,12 @@ impl DenoDir {
         module_name = p.to_string();
         filename = p.to_string();
       }
+      "https" => {
+        panic!(
+          "https isn't supported yet. \
+           See https://github.com/denoland/deno/issues/528"
+        );
+      }
       _ => {
         module_name = module_specifier.to_string();
         filename = get_cache_filename(self.deps.clone(), j);
@@ -300,7 +306,8 @@ pub struct CodeFetchOutput {
 #[cfg(test)]
 pub fn test_setup() -> (TempDir, DenoDir) {
   let temp_dir = TempDir::new().expect("tempdir fail");
-  let deno_dir = DenoDir::new(false, Some(temp_dir.path())).expect("setup fail");
+  let deno_dir =
+    DenoDir::new(false, Some(temp_dir.path())).expect("setup fail");
   (temp_dir, deno_dir)
 }
 
