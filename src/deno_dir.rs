@@ -116,7 +116,7 @@ impl DenoDir {
     } else {
       println!("Downloading {}", module_name);
       net::http_code_fetch(module_name).and_then(|res| {
-        fs::write_file_sync(&filepath, res.as_bytes());
+        fs::write_file_sync(&filepath, res.as_bytes())?;
         Ok(res)
       })
     }
