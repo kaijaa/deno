@@ -39,10 +39,6 @@ rust_crate("bitflags") {
   source_root = "$registry_github/bitflags-1.0.4/src/lib.rs"
 }
 
-
-
-
-
 rust_crate("unicode_segmentation") {
   source_root = "$registry_github/unicode-segmentation-1.2.1/src/lib.rs"
 }
@@ -59,7 +55,6 @@ rust_crate("utf8parse") {
 rust_crate("unicode_width") {
   source_root = "$registry_github/unicode-width-0.1.5/src/lib.rs"
 }
-
 
 rust_crate("libc") {
   source_root = "$registry_github/libc-0.2.43/src/lib.rs"

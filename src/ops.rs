@@ -8,6 +8,7 @@ use isolate::Isolate;
 use isolate::IsolateState;
 use isolate::Op;
 use msg;
+use repl;
 use resources;
 use resources::Resource;
 use tokio_util;
@@ -96,6 +97,7 @@ pub fn dispatch(
       msg::Any::Read => op_read,
       msg::Any::Remove => op_remove,
       msg::Any::Rename => op_rename,
+      msg::Any::Repl => op_repl,
       msg::Any::SetEnv => op_set_env,
       msg::Any::Shutdown => op_shutdown,
       msg::Any::Start => op_start,
@@ -1076,6 +1078,40 @@ fn op_read_link(
       msg::BaseArgs {
         inner: Some(inner.as_union_value()),
         inner_type: msg::Any::ReadlinkRes,
+        ..Default::default()
+      },
+    ))
+  })
+}
+
+fn op_repl(
+  _state: Arc<IsolateState>,
+  base: &msg::Base,
+  data: &'static mut [u8],
+) -> Box<Op> {
+  assert_eq!(data.len(), 0);
+  let inner = base.inner_as_repl().unwrap();
+  let cmd_id = base.cmd_id();
+  let prompt = inner.prompt().unwrap().to_owned();
+
+  blocking!(base.sync(), || -> OpResult {
+    debug!("op_repl {}", prompt);
+    let line = repl::readline(&prompt)?;
+    let builder = &mut FlatBufferBuilder::new();
+    let line_off = builder.create_string(&line);
+    let inner = msg::ReplRes::create(
+      builder,
+      &msg::ReplResArgs {
+        line: Some(line_off),
+        ..Default::default()
+      },
+    );
+    Ok(serialize_response(
+      cmd_id,
+      builder,
+      msg::BaseArgs {
+        inner: Some(inner.as_union_value()),
+        inner_type: msg::Any::ReplRes,
         ..Default::default()
       },
     ))

@@ -100,6 +100,7 @@ ts_sources = [
   "js/read_link.ts",
   "js/remove.ts",
   "js/rename.ts",
+  "js/repl.ts",
   "js/stat.ts",
   "js/symlink.ts",
   "js/text_encoding.ts",
