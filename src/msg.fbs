@@ -23,7 +23,9 @@ union Any {
   Rename,
   Readlink,
   ReadlinkRes,
-  Repl,
+  ReplStart,
+  ReplExit,
+  ReplReadline,
   ReplRes,
   Symlink,
   Stat,
@@ -253,8 +255,17 @@ table ReadlinkRes {
   path: string;
 }
 
-table Repl {
+table ReplStart {
+  name: string;
   prompt: string;
+}
+
+table ReplExit {
+  name: string;
+}
+
+table ReplReadline {
+  name: string;
 }
 
 table ReplRes {

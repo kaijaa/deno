@@ -96,7 +96,9 @@ pub fn dispatch(
       msg::Any::Read => op_read,
       msg::Any::Remove => op_remove,
       msg::Any::Rename => op_rename,
-      msg::Any::Repl => op_repl,
+      msg::Any::ReplStart => op_repl_start,
+      msg::Any::ReplExit => op_repl_exit,
+      msg::Any::ReplReadline => op_repl,
       msg::Any::SetEnv => op_set_env,
       msg::Any::Shutdown => op_shutdown,
       msg::Any::Start => op_start,
@@ -1083,24 +1085,56 @@ fn op_read_link(
   })
 }
 
+fn op_repl_start(
+  state: Arc<IsolateState>,
+  base: &msg::Base,
+  data: &'static mut [u8],
+) -> Box<Op> {
+  assert_eq!(data.len(), 0);
+  let inner = base.inner_as_repl_start().unwrap();
+  let _cmd_id = base.cmd_id();
+  let name = inner.name().unwrap();
+  let prompt = inner.prompt().unwrap();
+
+  debug!("op_repl_start {} {}", name, prompt);
+
+  state.start_repl(name.to_string(), prompt.to_string());
+  ok_future(empty_buf())
+}
+
+fn op_repl_exit(
+  state: Arc<IsolateState>,
+  base: &msg::Base,
+  data: &'static mut [u8],
+) -> Box<Op> {
+  assert_eq!(data.len(), 0);
+  let inner = base.inner_as_repl_exit().unwrap();
+  let _cmd_id = base.cmd_id();
+  let name = inner.name().unwrap();
+
+  debug!("op_repl_exit {}", name);
+
+  state.exit_repl(name.to_string());
+  ok_future(empty_buf())
+}
+
 fn op_repl(
   state: Arc<IsolateState>,
   base: &msg::Base,
   data: &'static mut [u8],
 ) -> Box<Op> {
   assert_eq!(data.len(), 0);
-  let inner = base.inner_as_repl().unwrap();
+  let inner = base.inner_as_repl_readline().unwrap();
   let cmd_id = base.cmd_id();
-  let prompt = inner.prompt().unwrap().to_owned();
+  let name = inner.name().unwrap().to_owned();
 
   blocking!(base.sync(), || -> OpResult {
-    debug!("op_repl {}", prompt);
+    debug!("op_repl {}", name);
 
-    state.start_repl(String::from("repl"));
     let mut repls = state.repls.lock().unwrap();
-    let repl = repls.get_mut("repl").unwrap();
+    let repl = repls.get_mut(&name).unwrap();
 
-    let line = repl.readline(&prompt)?;
+    let line = repl.readline()?;
     let builder = &mut FlatBufferBuilder::new();
     let line_off = builder.create_string(&line);
     let inner = msg::ReplRes::create(

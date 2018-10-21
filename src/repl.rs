@@ -14,12 +14,13 @@ use std::path::PathBuf;
 
 pub struct DenoRepl {
     pub name: String,
-    pub editor: Editor<()>,
-    pub history_file: PathBuf,
+    pub prompt: String,
+    editor: Editor<()>,
+    history_file: PathBuf,
 }
 
 impl DenoRepl {
-    pub fn new(name: &String, path: PathBuf) -> DenoRepl {
+    pub fn new(name: &String, prompt: &String, path: PathBuf) -> DenoRepl {
         // FIXME: hardcoded path to 'history' directory
         let mut history_path: PathBuf = path.clone();
         history_path.push("history");
@@ -27,6 +28,7 @@ impl DenoRepl {
 
         let mut repl = DenoRepl {
             name: name.clone(),
+            prompt: prompt.clone(),
             editor: Editor::<()>::new(),
             history_file: history_path,
         };
@@ -43,12 +45,12 @@ impl DenoRepl {
     fn update_history(&mut self, line: String) {
         self.editor.add_history_entry(line);
         // TODO We'd rather save the history only upon close
-        self.editor.save_history(&self.history_file.to_str().unwrap()).unwrap();
+        //        self.editor.save_history(&self.history_file.to_str().unwrap()).unwrap();
     }
 
-    pub fn readline(&mut self, prompt: &String) -> DenoResult<String> {
+    pub fn readline(&mut self) -> DenoResult<String> {
         self.editor
-            .readline(prompt)
+            .readline(&self.prompt)
             .map(|line| {
                 self.update_history(line.clone());
                 line
@@ -59,5 +61,12 @@ impl DenoRepl {
                     err => err
                 })
             .map_err(|err| deno_error(ErrorKind::Other, err.description().to_string()))
+    }
+
+    pub fn exit(&mut self) {
+        match self.editor.save_history(&self.history_file.to_str().unwrap()) {
+            Ok(_val) => println!("Saved history file to: {}", self.history_file.to_str().unwrap()),
+            Err(e) => eprintln!("Unable to save history file: {} {}", self.history_file.to_str().unwrap(), e),
+        };
     }
 }

@@ -91,16 +91,21 @@ impl IsolateState {
     metrics.bytes_received += bytes_received;
   }
 
-  pub fn start_repl(&self, repl_name: String) {
+  pub fn start_repl(&self, name: String, prompt: String) {
     let mut repls = self.repls.lock().unwrap();
-    match repls.entry(repl_name.clone()) {
+    match repls.entry(name.clone()) {
       Occupied(entry) => entry.into_mut(),
       Vacant(entry) => {
         let p = self.dir.root.clone();
-        entry.insert(DenoRepl::new(&repl_name, p))
+        entry.insert(DenoRepl::new(&name, &prompt, p))
       },
     };
+  }
 
+  pub fn exit_repl(&self, name: String) {
+    let mut repls = self.repls.lock().unwrap();
+    let mut repl = repls.remove(&name).unwrap();
+    repl.exit();
   }
 }
 

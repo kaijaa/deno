@@ -7,20 +7,47 @@ import * as dispatch from "./dispatch";
 import { exit } from "./os";
 import { window } from "./globals";
 
-// @internal
-export async function readline(prompt: string): Promise<string> {
-  return res(await dispatch.sendAsync(...req(prompt)));
+function startRepl(name: string, prompt: string): void {
+  dispatch.sendSync(...startReplReq(name, prompt));
 }
 
-function req(
-  prompt: string
-): [flatbuffers.Builder, msg.Any, flatbuffers.Offset] {
+function startReplReq(name: string, prompt: string): [flatbuffers.Builder, msg.Any, flatbuffers.Offset] {
   const builder = flatbuffers.createBuilder();
+  const name_ = builder.createString(name);
   const prompt_ = builder.createString(prompt);
-  msg.Repl.startRepl(builder);
-  msg.Repl.addPrompt(builder, prompt_);
-  const inner = msg.Repl.endRepl(builder);
-  return [builder, msg.Any.Repl, inner];
+
+  msg.ReplStart.startReplStart(builder);
+  msg.ReplStart.addName(builder, name_);
+  msg.ReplStart.addPrompt(builder, prompt_);
+  const inner = msg.ReplStart.endReplStart(builder);
+  return [builder, msg.Any.ReplStart, inner];
+}
+
+function exitRepl(name: string): void {
+  dispatch.sendSync(...exitReplReq(name));
+}
+
+function exitReplReq(name: string): [flatbuffers.Builder, msg.Any, flatbuffers.Offset] {
+  const builder = flatbuffers.createBuilder();
+  const name_ = builder.createString(name);
+  msg.ReplExit.startReplExit(builder);
+  msg.ReplExit.addName(builder, name_);
+  const inner = msg.ReplExit.endReplExit(builder);
+  return [builder, msg.Any.ReplExit, inner];
+}
+
+// @internal
+export async function readline(name: string): Promise<string> {
+  return res(await dispatch.sendAsync(...req(name)));
+}
+
+function req(name: string): [flatbuffers.Builder, msg.Any, flatbuffers.Offset] {
+  const builder = flatbuffers.createBuilder();
+  const name_ = builder.createString(name);
+  msg.ReplReadline.startReplReadline(builder);
+  msg.ReplReadline.addName(builder, name_);
+  const inner = msg.ReplReadline.endReplReadline(builder);
+  return [builder, msg.Any.ReplReadline, inner];
 }
 
 function res(baseRes: null | msg.Base): string {
@@ -36,10 +63,16 @@ function res(baseRes: null | msg.Base): string {
 // @internal
 export async function replLoop(): Promise<void> {
   window.deno = deno;  // FIXME use a new scope (rather than window).
+
+  const replName = "repl";
+  const prompt = ">> ";
+
+  startRepl(replName, prompt);
+
   let line = "";
   while(true){
     try {
-      line = await readline(">> ");
+      line = await readline(replName);
       line = line.trim();
     } catch(err) {
       if (err.message === "EOF") { break; }
@@ -59,4 +92,7 @@ export async function replLoop(): Promise<void> {
       }
     }
   }
+
+  console.log('exiting repl');
+  exitRepl(replName);
 }
