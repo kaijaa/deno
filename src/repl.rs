@@ -9,6 +9,7 @@ use msg::ErrorKind;
 use errors::DenoResult;
 use errors::new as deno_error;
 use std::process::exit;
+use std::path::PathBuf;
 
 const HISTORY_FILE: &str = "history.txt";
 
@@ -30,11 +31,18 @@ pub fn readline(editor: &mut Editor<()>, prompt: &String) -> DenoResult<String> 
     .map_err(|err| deno_error(ErrorKind::Other, err.description().to_string()))
 }
 
-pub fn start_repl(_name: &String) -> Editor<()> {
+pub fn start_repl(name: &String, path: PathBuf) -> Editor<()> {
   let mut editor = Editor::<()>::new();
+
   // TODO: load history file based on repl name
-  if editor.load_history(HISTORY_FILE).is_err() {
-    eprintln!("No repl history found, creating new file: {}", HISTORY_FILE);
+    let mut history_path: PathBuf = path.clone();
+    history_path.push("history");
+    history_path.push(name);
+    let history_path_str = history_path.to_str().unwrap();
+
+  println!("History file: {}", history_path_str);
+  if editor.load_history(history_path_str).is_err() {
+    eprintln!("No repl history found, creating new file: {}", history_path_str);
   }
   editor
 }

@@ -24,6 +24,7 @@ use std::time::Instant;
 use tokio;
 use tokio_util;
 use std::collections::HashMap;
+use std::collections::hash_map::Entry::{Vacant, Occupied};
 use repl;
 use rustyline::Editor;
 
@@ -93,7 +94,15 @@ impl IsolateState {
 
   pub fn start_repl(&self, repl_name: String) {
     let mut repls = self.repls.lock().unwrap();
-    repls.entry(repl_name.clone()).or_insert(repl::start_repl(&repl_name));
+    match repls.entry(repl_name.clone()) {
+      Occupied(entry) => entry.into_mut(),
+      Vacant(entry) => {
+        let p = self.dir.root.clone();
+        let repl = repl::start_repl(&repl_name, p);
+        entry.insert(repl)
+      },
+    };
+
   }
 }
 
