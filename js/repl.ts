@@ -11,7 +11,10 @@ function startRepl(name: string, prompt: string): void {
   dispatch.sendSync(...startReplReq(name, prompt));
 }
 
-function startReplReq(name: string, prompt: string): [flatbuffers.Builder, msg.Any, flatbuffers.Offset] {
+function startReplReq(
+  name: string,
+  prompt: string
+): [flatbuffers.Builder, msg.Any, flatbuffers.Offset] {
   const builder = flatbuffers.createBuilder();
   const name_ = builder.createString(name);
   const prompt_ = builder.createString(prompt);
@@ -27,7 +30,9 @@ function exitRepl(name: string): void {
   dispatch.sendSync(...exitReplReq(name));
 }
 
-function exitReplReq(name: string): [flatbuffers.Builder, msg.Any, flatbuffers.Offset] {
+function exitReplReq(
+  name: string
+): [flatbuffers.Builder, msg.Any, flatbuffers.Offset] {
   const builder = flatbuffers.createBuilder();
   const name_ = builder.createString(name);
   msg.ReplExit.startReplExit(builder);
@@ -62,7 +67,7 @@ function res(baseRes: null | msg.Base): string {
 
 // @internal
 export async function replLoop(): Promise<void> {
-  window.deno = deno;  // FIXME use a new scope (rather than window).
+  window.deno = deno; // FIXME use a new scope (rather than window).
 
   const replName = "repl";
   const prompt = ">> ";
@@ -70,19 +75,25 @@ export async function replLoop(): Promise<void> {
   startRepl(replName, prompt);
 
   let line = "";
-  while(true){
+  while (true) {
     try {
       line = await readline(replName);
       line = line.trim();
-    } catch(err) {
-      if (err.message === "EOF") { break; }
+    } catch (err) {
+      if (err.message === "EOF") {
+        break;
+      }
       console.error(err);
       exit(1);
     }
-    if (!line) { continue; }
-    if (line === ".exit") { break; }
+    if (!line) {
+      continue;
+    }
+    if (line === ".exit") {
+      break;
+    }
     try {
-      const result = eval.call(window, line);  // FIXME use a new scope.
+      const result = eval.call(window, line); // FIXME use a new scope.
       console.log(result);
     } catch (err) {
       if (err instanceof Error) {
@@ -93,6 +104,5 @@ export async function replLoop(): Promise<void> {
     }
   }
 
-  console.log('exiting repl');
   exitRepl(replName);
 }

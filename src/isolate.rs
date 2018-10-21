@@ -11,7 +11,10 @@ use libdeno;
 
 use futures::Future;
 use libc::c_void;
+use repl::DenoRepl;
 use std;
+use std::collections::hash_map::Entry::{Occupied, Vacant};
+use std::collections::HashMap;
 use std::env;
 use std::ffi::CStr;
 use std::ffi::CString;
@@ -23,9 +26,6 @@ use std::time::Duration;
 use std::time::Instant;
 use tokio;
 use tokio_util;
-use std::collections::HashMap;
-use std::collections::hash_map::Entry::{Vacant, Occupied};
-use repl::DenoRepl;
 
 type DenoException<'a> = &'a str;
 
@@ -98,7 +98,7 @@ impl IsolateState {
       Vacant(entry) => {
         let p = self.dir.root.clone();
         entry.insert(DenoRepl::new(&name, &prompt, p))
-      },
+      }
     };
   }
 
@@ -344,8 +344,8 @@ extern "C" fn pre_dispatch(
     // manually.
     isolate.ntasks_increment();
 
-    let task = op
-      .and_then(move |buf| {
+    let task =
+      op.and_then(move |buf| {
         state.send_to_js(req_id, buf);
         Ok(())
       }).map_err(|_| ());
@@ -399,7 +399,8 @@ mod tests {
             throw Error("assert error");
           }
         "#,
-        ).expect("execute error");
+        )
+        .expect("execute error");
       isolate.event_loop();
     });
   }
@@ -444,7 +445,8 @@ mod tests {
           const data = new Uint8Array([42, 43, 44, 45, 46]);
           libdeno.send(control, data);
         "#,
-        ).expect("execute error");
+        )
+        .expect("execute error");
       isolate.event_loop();
       let metrics = isolate.state.metrics.lock().unwrap();
       assert_eq!(metrics.ops_dispatched, 1);
@@ -480,7 +482,8 @@ mod tests {
           let r = libdeno.send(control, data);
           if (r != null) throw Error("expected null");
         "#,
-        ).expect("execute error");
+        )
+        .expect("execute error");
 
       // Make sure relevant metrics are updated before task is executed.
       {

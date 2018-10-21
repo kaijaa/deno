@@ -371,7 +371,8 @@ fn op_env(
           ..Default::default()
         },
       )
-    }).collect();
+    })
+    .collect();
   let tables = builder.create_vector(&vars);
   let inner = msg::EnvironRes::create(
     builder,
@@ -961,7 +962,8 @@ fn op_read_dir(
             ..Default::default()
           },
         )
-      }).collect();
+      })
+      .collect();
 
     let entries = builder.create_vector(&entries);
     let inner = msg::ReadDirRes::create(
