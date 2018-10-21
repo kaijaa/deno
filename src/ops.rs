@@ -1085,7 +1085,7 @@ fn op_read_link(
 }
 
 fn op_repl(
-  _state: Arc<IsolateState>,
+  state: Arc<IsolateState>,
   base: &msg::Base,
   data: &'static mut [u8],
 ) -> Box<Op> {
@@ -1096,7 +1096,12 @@ fn op_repl(
 
   blocking!(base.sync(), || -> OpResult {
     debug!("op_repl {}", prompt);
-    let line = repl::readline(&prompt)?;
+
+    state.start_repl(String::from("repl"));
+    let mut repls = state.repls.lock().unwrap();
+    let editor = repls.get_mut("repl").unwrap();
+
+    let line = repl::readline(editor, &prompt)?;
     let builder = &mut FlatBufferBuilder::new();
     let line_off = builder.create_string(&line);
     let inner = msg::ReplRes::create(

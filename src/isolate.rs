@@ -23,6 +23,9 @@ use std::time::Duration;
 use std::time::Instant;
 use tokio;
 use tokio_util;
+use std::collections::HashMap;
+use repl;
+use rustyline::Editor;
 
 type DenoException<'a> = &'a str;
 
@@ -58,6 +61,7 @@ pub struct IsolateState {
   pub flags: flags::DenoFlags,
   tx: Mutex<Option<mpsc::Sender<(i32, Buf)>>>,
   pub metrics: Mutex<Metrics>,
+  pub repls: Mutex<HashMap<String, Editor<()>>>,
 }
 
 impl IsolateState {
@@ -85,6 +89,11 @@ impl IsolateState {
     let mut metrics = self.metrics.lock().unwrap();
     metrics.ops_completed += 1;
     metrics.bytes_received += bytes_received;
+  }
+
+  pub fn start_repl(&self, repl_name: String) {
+    let mut repls = self.repls.lock().unwrap();
+    repls.entry(repl_name.clone()).or_insert(repl::start_repl(&repl_name));
   }
 }
 
@@ -134,6 +143,7 @@ impl Isolate {
         flags,
         tx: Mutex::new(Some(tx)),
         metrics: Mutex::new(Metrics::default()),
+        repls: Mutex::new(HashMap::new()),
       }),
     }
   }

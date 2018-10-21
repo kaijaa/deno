@@ -12,9 +12,7 @@ use std::process::exit;
 
 const HISTORY_FILE: &str = "history.txt";
 
-pub fn readline(prompt: &String) -> DenoResult<String> {
-  // TODO instantiate the editor once only (for the session).
-  let mut editor = start_repl();
+pub fn readline(editor: &mut Editor<()>, prompt: &String) -> DenoResult<String> {
   editor
     .readline(prompt)
     .map(|line| {
@@ -32,8 +30,9 @@ pub fn readline(prompt: &String) -> DenoResult<String> {
     .map_err(|err| deno_error(ErrorKind::Other, err.description().to_string()))
 }
 
-fn start_repl() -> Editor<()> {
+pub fn start_repl(_name: &String) -> Editor<()> {
   let mut editor = Editor::<()>::new();
+  // TODO: load history file based on repl name
   if editor.load_history(HISTORY_FILE).is_err() {
     eprintln!("No repl history found, creating new file: {}", HISTORY_FILE);
   }
