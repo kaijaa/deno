@@ -8,7 +8,6 @@ use isolate::Isolate;
 use isolate::IsolateState;
 use isolate::Op;
 use msg;
-use repl;
 use resources;
 use resources::Resource;
 use tokio_util;
@@ -1099,9 +1098,9 @@ fn op_repl(
 
     state.start_repl(String::from("repl"));
     let mut repls = state.repls.lock().unwrap();
-    let editor = repls.get_mut("repl").unwrap();
+    let repl = repls.get_mut("repl").unwrap();
 
-    let line = repl::readline(editor, &prompt)?;
+    let line = repl.readline(&prompt)?;
     let builder = &mut FlatBufferBuilder::new();
     let line_off = builder.create_string(&line);
     let inner = msg::ReplRes::create(

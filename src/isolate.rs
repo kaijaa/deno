@@ -25,8 +25,7 @@ use tokio;
 use tokio_util;
 use std::collections::HashMap;
 use std::collections::hash_map::Entry::{Vacant, Occupied};
-use repl;
-use rustyline::Editor;
+use repl::DenoRepl;
 
 type DenoException<'a> = &'a str;
 
@@ -62,7 +61,7 @@ pub struct IsolateState {
   pub flags: flags::DenoFlags,
   tx: Mutex<Option<mpsc::Sender<(i32, Buf)>>>,
   pub metrics: Mutex<Metrics>,
-  pub repls: Mutex<HashMap<String, Editor<()>>>,
+  pub repls: Mutex<HashMap<String, DenoRepl>>,
 }
 
 impl IsolateState {
@@ -98,8 +97,7 @@ impl IsolateState {
       Occupied(entry) => entry.into_mut(),
       Vacant(entry) => {
         let p = self.dir.root.clone();
-        let repl = repl::start_repl(&repl_name, p);
-        entry.insert(repl)
+        entry.insert(DenoRepl::new(&repl_name, p))
       },
     };
 
