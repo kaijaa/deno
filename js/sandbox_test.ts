@@ -18,14 +18,16 @@ test(function sandboxLexicalScope() {
 test(function sandboxError() {
   const model = { a: 1 };
   const s = deno.sandbox(model);
-  let err;
   try {
     s.eval("not_a_variable");
-  } catch (e) {
-    err = e;
+  } catch (err) {
+    assert(!!err);
+    // TODO: somehow this is not ReferenceError instance but generic Error, that's why name is checked
+    assert(err.name, "ReferenceError");
+    assertEqual(err.message, "not_a_variable is not defined");
+    return;
   }
-  assert(!!err);
-  assertEqual(err.message, "ReferenceError: not_a_variable is not defined");
+  assert(false, "Error should be caught.");
 });
 
 test(function sandboxSetEnv() {

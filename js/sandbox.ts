@@ -23,6 +23,22 @@ function formatFrameAtMessage(frame: { [key: string]: string }) {
   }
 }
 
+// TODO: change type of env
+// tslint:disable-next-line:no-any
+function parseError(env: any, errMsg: string): Error {
+  const errInfo = JSON.parse(errMsg);
+  // parse full message (eg. ReferenceError: x is not defined) to get error name and message
+  const [errorName, message] = errInfo.message.split(':');
+  // try to get actual error or fallback to generic Error
+  const errorCtor = env[errorName] || Error;
+  const err = new errorCtor();
+  err.name = errorName;
+  err.message = message.trim();
+  const preparedStackFrames = errInfo.frames.map(formatFrameAtMessage).join("\n");
+  err.stack = `${errInfo.message}\n${preparedStackFrames}`;
+  return err;
+}
+
 class DenoSandboxImpl implements DenoSandbox {
   constructor(public env: {}) {}
   eval(code: string) {
@@ -30,14 +46,7 @@ class DenoSandboxImpl implements DenoSandbox {
     if (errMsg) {
       let err;
       try {
-        const errInfo = JSON.parse(errMsg);
-        err = new Error();
-        err.message = errInfo.message; // Don't prefix with "Error"
-        err.stack = `${errInfo.message}\n${errInfo.frames
-          .map((frame: { [key: string]: string }) =>
-            formatFrameAtMessage(frame)
-          )
-          .join("\n")}`;
+        err = parseError(this.env, errMsg);
       } catch (e) {
         err = new Error("Unknown sandbox error");
       }

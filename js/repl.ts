@@ -90,7 +90,7 @@ function evaluate(code: string): void {
     console.log(result);
   } catch (err) {
     if (err instanceof Error) {
-      console.error(err.message);
+      console.error(`${err.name}: ${err.message}`);
     } else {
       console.error("Thrown:", err);
     }
