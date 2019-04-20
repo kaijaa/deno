@@ -23,7 +23,7 @@ function deferred(): {
 }
 
 async function waitForMs(ms): Promise<number> {
-  return new Promise((resolve):NodeJS.Timeout => setTimeout(resolve, ms));
+  return new Promise((resolve): number => setTimeout(resolve, ms));
 }
 
 test(async function timeoutSuccess(): Promise<void> {
