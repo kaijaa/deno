@@ -55,6 +55,7 @@ test(function consoleTestStringifyLongStrings(): void {
   assertEquals(actual, veryLongString);
 });
 
+/* eslint-disable @typescript-eslint/explicit-function-return-type */
 test(function consoleTestStringifyCircular(): void {
   class Base {
     a = 1;
@@ -146,6 +147,7 @@ test(function consoleTestStringifyCircular(): void {
   // test inspect is working the same
   assertEquals(inspect(nestedObj), nestedObjExpected);
 });
+/* eslint-enable @typescript-eslint/explicit-function-return-type */
 
 test(function consoleTestStringifyWithDepth(): void {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -283,7 +285,7 @@ test(function consoleTestClear(): void {
   const uint8 = new TextEncoder().encode("\x1b[1;1H" + "\x1b[0J");
   let buffer = new Uint8Array(0);
 
-  stdout.write = async u8 => {
+  stdout.write = async (u8: Uint8Array): Promise<number> => {
     const tmp = new Uint8Array(buffer.length + u8.length);
     tmp.set(buffer, 0);
     tmp.set(u8, buffer.length);
@@ -355,7 +357,7 @@ function mockConsole(f: ConsoleExamineFunc): void {
   const err = new StringBuffer();
   const both = new StringBuffer();
   const csl = new Console(
-    (x: string, isErr: boolean, printsNewLine: boolean) => {
+    (x: string, isErr: boolean, printsNewLine: boolean): void => {
       const content = x + (printsNewLine ? "\n" : "");
       const buf = isErr ? err : out;
       buf.add(content);
@@ -367,7 +369,7 @@ function mockConsole(f: ConsoleExamineFunc): void {
 
 // console.group test
 test(function consoleGroup(): void {
-  mockConsole((console, out) => {
+  mockConsole((console, out): void => {
     console.group("1");
     console.log("2");
     console.group("3");
@@ -400,7 +402,7 @@ test(function consoleGroup(): void {
 
 // console.group with console.warn test
 test(function consoleGroupWarn(): void {
-  mockConsole((console, _out, _err, both) => {
+  mockConsole((console, _out, _err, both): void => {
     console.warn("1");
     console.group();
     console.warn("2");
