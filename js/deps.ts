@@ -6,9 +6,10 @@ import { decodeMessage } from "./workers";
 import { assert } from "./util";
 import * as flatbuffers from "./flatbuffers";
 
-export function deps(): any {
+export function deps(specifier: string): any {
   const builder = flatbuffers.createBuilder();
-  const inner = msg.Deps.createDeps(builder);
+  const specifier_ = builder.createString(specifier);
+  const inner = msg.Deps.createDeps(builder, specifier_);
   const baseRes = sendSync(builder, msg.Any.Deps, inner)!;
   assert(msg.Any.DepsRes === baseRes.innerType());
   const res = new msg.DepsRes();

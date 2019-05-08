@@ -629,10 +629,19 @@ fn op_deps(
 ) -> Box<OpWithError> {
   assert!(data.is_none());
   let cmd_id = base.cmd_id();
+  let inner = base.inner_as_deps().unwrap();
+  let mut module_specifier: &str = inner.specifier().unwrap();
+  let main_module = state.main_module().unwrap().clone();
+
+  if module_specifier == "" {
+    module_specifier = &main_module;
+  }
+
+//  println!("specifier for deps {:?}", module_specifier.clone());
 
   let maybe_out = worker::fetch_module_meta_data_and_maybe_compile(
     &state,
-    &state.main_module().unwrap(),
+    module_specifier,
     ".",
   );
   if let Err(e) = maybe_out {

@@ -281,7 +281,9 @@ table EnvironRes {
   map: [KeyValue];
 }
 
-table Deps {}
+table Deps {
+  specifier: string;
+}
 
 table DepsRes {
   data: [ubyte];

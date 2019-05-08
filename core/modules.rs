@@ -288,6 +288,7 @@ impl<L: Loader> Future for RecursiveLoad<L> {
   }
 }
 
+#[derive(Clone)]
 struct ModuleInfo {
   name: String,
   children: Vec<String>,
@@ -305,6 +306,7 @@ impl ModuleInfo {
 }
 
 /// A symbolic module entity.
+#[derive(Clone)]
 pub enum SymbolicModule {
   /// This module is an alias to another module.
   /// This is useful such that multiple names could point to
@@ -314,7 +316,7 @@ pub enum SymbolicModule {
   Mod(deno_mod),
 }
 
-#[derive(Default)]
+#[derive(Default, Clone)]
 /// Alias-able module name map
 pub struct ModuleNameMap {
   inner: HashMap<String, SymbolicModule>,
@@ -369,7 +371,7 @@ impl ModuleNameMap {
 }
 
 /// A collection of JS modules.
-#[derive(Default)]
+#[derive(Default, Clone)]
 pub struct Modules {
   info: HashMap<deno_mod, ModuleInfo>,
   by_name: ModuleNameMap,

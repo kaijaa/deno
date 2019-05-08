@@ -23,7 +23,6 @@ use url::Url;
 /// high-level module loading
 pub struct Worker {
   inner: deno::Isolate,
-  pub modules: deno::Modules,
   pub state: ThreadSafeState,
 }
 
@@ -40,7 +39,6 @@ impl Worker {
     });
     Self {
       inner: deno::Isolate::new(startup_data, config),
-      modules: deno::Modules::new(),
       state,
     }
   }
@@ -192,7 +190,7 @@ impl Loader for Worker {
   fn isolate_and_modules<'a: 'b + 'c, 'b, 'c>(
     &'a mut self,
   ) -> (&'b mut deno::Isolate, &'c mut deno::Modules) {
-    (&mut self.inner, &mut self.modules)
+    (&mut self.inner, &mut self.state.modules.clone())
   }
 }
 
