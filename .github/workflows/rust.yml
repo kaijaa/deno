@@ -23,18 +23,20 @@ jobs:
         export AWS_ACCESS_KEY_ID=AKIAIVRN52PLDBP55LBQ
         export AWS_SECRET_ACCESS_KEY=${{ secrets.AWS_SECRET_ACCESS_KEY }}
         export PATH=`pwd`/prebuilt/linux64:$PATH
+    - name: setup.py
+      run: python ./tools/setup.py
     - name: Install clippy and fmt
       run: rustup component add clippy && rustup component add rustfmt
-#    - name: Run sccache
-#      run: |
-#        echo $PATH
-#        ./prebuilt/linux64/sccache --start-server
     - name: Lint
       run: ./tools/lint.py
     - name: Test format
       run: ./tools/test_format.py
     - name: Clippy
       run: cargo clippy --all-targets --release --locked -- -D clippy::all
+    - name: Run sccache
+      run: |
+        echo $PATH
+        ./prebuilt/linux64/sccache --start-server
     - name: Build
       run: cargo build --release --locked --all-targets --verbose
     - name: Run tests
