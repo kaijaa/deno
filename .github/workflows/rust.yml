@@ -25,10 +25,10 @@ jobs:
         export PATH=`pwd`/prebuilt/linux64:$PATH
     - name: Install clippy and fmt
       run: rustup component add clippy && rustup component add rustfmt
-    - name: Run sccache
-      run: |
-        echo $PATH
-        ./prebuilt/linux64/sccache --start-server
+#    - name: Run sccache
+#      run: |
+#        echo $PATH
+#        ./prebuilt/linux64/sccache --start-server
     - name: Lint
       run: ./tools/lint.py
     - name: Test format
