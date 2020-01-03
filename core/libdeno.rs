@@ -1318,19 +1318,19 @@ extern "C" fn eval_context(info: &v8::FunctionCallbackInfo) {
 }
 
 extern "C" fn error_to_json(info: &v8::FunctionCallbackInfo) {
+  use v8::InIsolate;
   #[allow(mutable_transmutes)]
   #[allow(clippy::transmute_ptr_to_ptr)]
   let info: &mut v8::FunctionCallbackInfo =
     unsafe { std::mem::transmute(info) };
   assert_eq!(info.length(), 1);
   // <Boilerplate>
-  let mut isolate = info.get_isolate();
+  let mut hs = v8::HandleScope::new(info);
+  let scope = hs.enter();
+  let mut isolate = scope.isolate();
   let deno_isolate: &mut DenoIsolate =
     unsafe { &mut *(isolate.get_data(0) as *mut DenoIsolate) };
-  let mut locker = v8::Locker::new(&isolate);
   assert!(!deno_isolate.context_.is_empty());
-  let mut hs = v8::HandleScope::new(&mut locker);
-  let scope = hs.enter();
   let mut context = deno_isolate.context_.get(scope).unwrap();
   // </Boilerplate>
   let exception = info.get_argument(0);
@@ -1342,7 +1342,27 @@ extern "C" fn error_to_json(info: &v8::FunctionCallbackInfo) {
 }
 
 extern "C" fn queue_microtask(info: &v8::FunctionCallbackInfo) {
-  todo!()
+  use v8::InIsolate;
+  #[allow(mutable_transmutes)]
+  #[allow(clippy::transmute_ptr_to_ptr)]
+  let info: &mut v8::FunctionCallbackInfo =
+    unsafe { std::mem::transmute(info) };
+  assert_eq!(info.length(), 1);
+  // <Boilerplate>
+  let mut hs = v8::HandleScope::new(info);
+  let scope = hs.enter();
+  let mut isolate = scope.isolate();
+  
+  let arg0 = info.get_argument(0);
+
+  if !arg0.is_function() {
+    let msg = v8::String::new(scope, "Invalid argument").unwrap();
+    isolate.throw_exception(msg.into());
+    return;
+  }
+
+  let mut arg0 = unsafe { v8::Local::<v8::Function>::cast(arg0) };
+  isolate.enqueue_microtask(arg0);
 }
 
 extern "C" fn shared_getter(
