@@ -1700,12 +1700,31 @@ pub unsafe fn deno_execute(
 }
 
 pub unsafe fn deno_terminate_execution(i: *const isolate) {
-  todo!()
+  /*
+  deno::DenoIsolate* d = reinterpret_cast<deno::DenoIsolate*>(d_);
+  d->isolate_->TerminateExecution();
+  */
+  let i_mut: &mut DenoIsolate = unsafe { std::mem::transmute(i) };
+  let isolate = i_mut.isolate_.as_ref().unwrap();
+  isolate.terminate_execution();
 }
 
 #[allow(dead_code)]
-pub unsafe fn deno_run_microtasks(i: *const isolate, user_data: *const c_void) {
-  todo!()
+pub unsafe fn deno_run_microtasks(i: *const isolate, user_data: *mut c_void) {
+  /*
+  deno::DenoIsolate* d = reinterpret_cast<deno::DenoIsolate*>(d_);
+  deno::UserDataScope user_data_scope(d, user_data);
+  v8::Locker locker(d->isolate_);
+  v8::Isolate::Scope isolate_scope(d->isolate_);
+  d->isolate_->RunMicrotasks();
+  */
+  let deno_isolate: &mut DenoIsolate = unsafe { std::mem::transmute(i) };
+  let user_scope = UserDataScope::new(deno_isolate, user_data);
+  let isolate = deno_isolate.isolate_.as_ref().unwrap();
+  let mut locker = v8::Locker::new(isolate);
+  isolate.enter();
+  isolate.run_microtasks();
+  isolate.exit();
 }
 
 // Modules
