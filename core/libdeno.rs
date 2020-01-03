@@ -15,7 +15,6 @@ use std::option::Option;
 use std::ptr::null;
 use std::ptr::NonNull;
 use std::slice;
-use v8::GetIsolate;
 
 pub type OpId = u32;
 
@@ -666,15 +665,16 @@ extern "C" fn message_callback(
 }
 
 extern "C" fn promise_reject_callback(msg: v8::PromiseRejectMessage) {
+  use v8::InIsolate;
+
   #[allow(mutable_transmutes)]
   let mut msg: v8::PromiseRejectMessage = unsafe { std::mem::transmute(msg) };
-  let mut isolate = msg.get_isolate();
+  let mut hs = v8::HandleScope::new(&mut msg);
+  let scope = hs.enter();
+  let mut isolate = msg.isolate();
   let deno_isolate: &mut DenoIsolate =
     unsafe { &mut *(isolate.get_data(0) as *mut DenoIsolate) };
-  let mut locker = v8::Locker::new(isolate);
   assert!(!deno_isolate.context_.is_empty());
-  let mut hs = v8::HandleScope::new(&mut locker);
-  let scope = hs.enter();
   let mut context = deno_isolate.context_.get(scope).unwrap();
   context.enter();
 
@@ -1056,7 +1056,7 @@ extern "C" fn send(info: &v8::FunctionCallbackInfo) {
   let mut isolate = scope.isolate();
   let deno_isolate: &mut DenoIsolate =
     unsafe { &mut *(isolate.get_data(0) as *mut DenoIsolate) };
-    assert!(!deno_isolate.context_.is_empty());
+  assert!(!deno_isolate.context_.is_empty());
 
   /*
   deno_buf control = {nullptr, 0};
@@ -1092,7 +1092,10 @@ extern "C" fn send(info: &v8::FunctionCallbackInfo) {
 
   if arg1.is_array_buffer_view() {
     let view = unsafe { v8::Local::<v8::ArrayBufferView>::cast(arg1) };
-    let backing_store = view.buffer().expect("Failed to get buffer").get_backing_store();
+    let backing_store = view
+      .buffer()
+      .expect("Failed to get buffer")
+      .get_backing_store();
     control = backing_store.data_bytes().into();
   }
 
@@ -1103,9 +1106,8 @@ extern "C" fn send(info: &v8::FunctionCallbackInfo) {
   //   PinnedBuf
   // }
 
-
   /*
-  
+
 
   DCHECK_NULL(d->current_args_);
   d->current_args_ = &args;
