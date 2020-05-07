@@ -8,12 +8,14 @@ use crate::file_fetcher::SourceFileFetcher;
 use crate::fmt;
 use crate::fs as deno_fs;
 use crate::global_state::GlobalState;
+use crate::import_map::ImportMap;
 use crate::module_graph::ModuleGraphLoader;
 use crate::msg;
 use crate::op_error::OpError;
 use crate::ops;
 use crate::source_maps::SourceMapGetter;
 use crate::startup_data;
+use crate::state::exit_unstable;
 use crate::state::State;
 use crate::state::*;
 use crate::tokio_util;
@@ -375,8 +377,18 @@ impl TsCompiler {
     );
     eprintln!("Bundling {}", module_specifier.to_string());
 
+    let import_map: Option<ImportMap> =
+      match global_state.flags.import_map_path.as_ref() {
+        None => None,
+        Some(file_path) => {
+          if !global_state.flags.unstable {
+            exit_unstable("--importmap")
+          }
+          Some(ImportMap::load(file_path)?)
+        }
+      };
     let module_graph_loader =
-      ModuleGraphLoader::new(global_state.file_fetcher.clone());
+      ModuleGraphLoader::new(global_state.file_fetcher.clone(), import_map);
     let module_graph =
       module_graph_loader.build_graph(&module_specifier).await?;
     let module_graph_json =
@@ -423,17 +435,19 @@ impl TsCompiler {
       return Err(ErrBox::from(bundle_response.diagnostics));
     }
 
+    let output_string = fmt::format_text(&bundle_response.bundle_output)?;
+
     if let Some(out_file_) = out_file.as_ref() {
       eprintln!("Emitting bundle to {:?}", out_file_);
 
-      let output_bytes = bundle_response.bundle_output.as_bytes();
+      let output_bytes = output_string.as_bytes();
       let output_len = output_bytes.len();
 
       deno_fs::write_file(out_file_, output_bytes, 0o666)?;
       // TODO(bartlomieju): add "humanFileSize" method
       eprintln!("{} bytes emmited.", output_len);
     } else {
-      println!("{}", bundle_response.bundle_output);
+      println!("{}", output_string);
     }
 
     Ok(())
@@ -640,8 +654,18 @@ impl TsCompiler {
     let source_file_ = source_file.clone();
     let module_url = source_file.url.clone();
     let module_specifier = ModuleSpecifier::from(source_file.url.clone());
+    let import_map: Option<ImportMap> =
+      match global_state.flags.import_map_path.as_ref() {
+        None => None,
+        Some(file_path) => {
+          if !global_state.flags.unstable {
+            exit_unstable("--importmap")
+          }
+          Some(ImportMap::load(file_path)?)
+        }
+      };
     let module_graph_loader =
-      ModuleGraphLoader::new(global_state.file_fetcher.clone());
+      ModuleGraphLoader::new(global_state.file_fetcher.clone(), import_map);
     let module_graph =
       module_graph_loader.build_graph(&module_specifier).await?;
     let module_graph_json =
